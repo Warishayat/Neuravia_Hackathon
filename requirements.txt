@@ -1,0 +1,9 @@
+streamlit 
+load_dotenv
+fastapi
+uvicorn
+langchain
+langgraph
+langchain_groq
+langchain_google_genai
+# ollama

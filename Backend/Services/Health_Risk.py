@@ -1,0 +1,1 @@
+print("This file containa all the logic related user risk like daibetes,sugar,stroke etc")

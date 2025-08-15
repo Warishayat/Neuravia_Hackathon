@@ -1,0 +1,1 @@
+print("This file contain all the logic related medical report and xray analyzer")

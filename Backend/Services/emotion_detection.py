@@ -1,0 +1,1 @@
+print("This file will contain all the logic related to the Emotion detection with webcam with livecamera")
