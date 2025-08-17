@@ -1,15 +1,88 @@
+import cv2
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-import warnings
 import os
-warnings.filterwarnings('ignore')
-load_dotenv()
 
+load_dotenv()
 groq_api_key = os.getenv("GROQ_API_KEY")
 
-print("API is set in the enviroment")
-model = ChatGroq(
-    model="openai/gpt-oss-120b",
-    temperature=0.7
-)
-print(model.invoke("Who came first egg or hen").content)
+print("Real-time Mood Assistant with Sunnah Reminder")
+
+face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+smile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_smile.xml')
+
+llm = ChatGroq(model="moonshotai/kimi-k2-instruct", temperature=0.7)
+
+def get_mood_advice(emotion: str) -> str:
+    if emotion == "happy":
+        return "Smile is the Sunnah of Prophet Muhammad (SAW). Keep spreading positivity!"
+    elif emotion == "sad":
+        prompt = """
+        The user seems sad.
+        Provide a short, empathetic self-care suggestion to uplift their mood
+        and encourage them until they feel happy.
+        End with: "This is not medical advice."
+        """
+    else:  
+        prompt = """
+        The user seems neutral.
+        Provide a short positive message or motivation to lighten their mood.
+        End with: "This is not medical advice."
+        """
+    response = llm.invoke(prompt)
+    return response.content.strip()
+
+def detect_mood_webcam():
+    cap = cv2.VideoCapture(0)
+    print("Press 'q' to quit webcam...")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        faces = face_cascade.detectMultiScale(gray, 1.2, 6)
+
+        emotion = "neutral"
+
+        for (x, y, w, h) in faces:
+            roi_gray = gray[y:y+h, x:x+w]
+            smiles = smile_cascade.detectMultiScale(
+                roi_gray,
+                scaleFactor=1.7,
+                minNeighbors=22,
+                minSize=(25, 25)
+            )
+
+            if len(smiles) > 0:
+                emotion = "happy"
+            else:
+                emotion = "sad" if roi_gray.mean() < 110 else "neutral"
+
+            advice = get_mood_advice(emotion)
+
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+            cv2.putText(frame, f"Emotion: {emotion}",
+                        (x, y-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+            y0, dy = y + h + 30, 30
+            for i, line in enumerate(advice.split("\n")):
+                yy = y0 + i*dy
+                cv2.putText(frame, line, (50, yy), cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6, (255, 255, 255), 2)
+
+        h, w, _ = frame.shape
+        cv2.putText(frame, "Press 'Q' to quit", (20, h-20),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+
+        cv2.imshow("Mood Detection + Sunnah Reminder", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    detect_mood_webcam()
