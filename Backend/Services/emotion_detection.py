@@ -20,14 +20,12 @@ def get_mood_advice(emotion: str) -> str:
         prompt = """
         The user seems sad.
         Provide a short, empathetic self-care suggestion to uplift their mood
-        and encourage them until they feel happy.
-        End with: "This is not medical advice."
+        and encourage them until they feel happy."
         """
     else:  
         prompt = """
         The user seems neutral.
-        Provide a short positive message or motivation to lighten their mood.
-        End with: "This is not medical advice."
+        Provide a short positive message or motivation to lighten their mood."
         """
     response = llm.invoke(prompt)
     return response.content.strip()
