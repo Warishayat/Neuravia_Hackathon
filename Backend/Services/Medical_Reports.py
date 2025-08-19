@@ -1,6 +1,7 @@
+import os
+os.environ["TRANSFORMERS_NO_TF"] = "1"
 from langchain_groq import ChatGroq
 from dotenv import load_dotenv
-import os
 from langchain_community.vectorstores import FAISS
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -70,7 +71,7 @@ def rag_pipeline(file_data, file_type: str = 'pdf'):
         )
         chunks = text_splitter.split_documents(documents)
         
-        embeddings = HuggingFaceEmbeddings()
+        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
         
         vector_store = FAISS.from_documents(chunks, embeddings)
         model = ChatGroq(

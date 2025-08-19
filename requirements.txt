@@ -7,4 +7,14 @@ langgraph
 langchain_groq
 langchain_community
 langchain_google_genai
-# ollama
+langchain-cli
+cv2
+streamlit
+streamlit-webrtc
+streamlit-cookies-manager
+sqlite3          
+bcrypt
+python-dotenv
+opencv-python
+Pillow
+av
