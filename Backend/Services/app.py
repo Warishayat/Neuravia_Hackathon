@@ -23,8 +23,7 @@ from emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
 from tumor_detection import save_image_url,brain_tumor_classifier
 
-
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('error', category=DeprecationWarning)
 load_dotenv()
 key = os.getenv("key")
 
@@ -493,8 +492,8 @@ else:
 
         webrtc_streamer(
             key="mood-reminder",
-            video_transformer_factory=VideoTransformer,
+            video_processor_factory=VideoTransformer,
             media_stream_constraints={"video": True, "audio": False},
-            async_transform=True,
+            async_processing=True,
         )
 
