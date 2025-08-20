@@ -1,4 +1,3 @@
-
 import streamlit as st
 import sqlite3
 import bcrypt
@@ -25,7 +24,7 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 from tumor_detection import save_image_url,brain_tumor_classifier
 
 
-warnings.filterwarnings("ignore", category=RuntimeWarning)
+warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
@@ -101,7 +100,7 @@ else:
         cookies["logged_in"]="false"
         cookies.save()
         st.rerun()
-    tab1,tab8,tab2,tab3,tab4,tab5,tab6,tab7=st.tabs(["Home","Emotion Detector","Health Assistant","Risk Prediction","Medical Report","MediGuide","Treatment Plan","Tumor Detection"])
+    tab1,tab8,tab2,tab3,tab4,tab5,tab6,tab7=st.tabs(["Home","Tumor Detection","Health Assistant","Risk Prediction","Medical Report","MediGuide","Treatment Plan","Emotion Detector"])
 
 
     with tab1:
@@ -341,7 +340,7 @@ else:
             st.subheader("Last Personalized Treatment Plan")
             st.markdown(st.session_state.treatment_plan, unsafe_allow_html=True)
 
-    with tab7:
+    with tab8:
         st.header("Brain Tumor Detection")
         if 'tumor_logs' not in st.session_state:
             st.session_state.tumor_logs = []
@@ -483,7 +482,7 @@ else:
             **Note**: This is an AI-assisted tool for educational purposes. 
             Always consult medical professionals for actual diagnosis.
             """)
-    with tab8:
+    with tab7:
         st.header("Real-time Mood + Sunnah Reminder")
         
         class VideoTransformer(VideoTransformerBase):
@@ -493,14 +492,9 @@ else:
                 return av.VideoFrame.from_ndarray(processed_img, format="bgr24")
 
         webrtc_streamer(
-        key="mood-reminder",
-        video_processor_factory=VideoTransformer,
-        media_stream_constraints={"video": True, "audio": False},
-        async_processing=True,
-        rtc_configuration={
-            "iceServers": [
-                {"urls": ["stun:stun.l.google.com:19302"]}
-            ]
-        }
-    )
+            key="mood-reminder",
+            video_processor_factory=VideoTransformer,
+            media_stream_constraints={"video": True, "audio": False},
+            async_transform=True,
+        )
 
