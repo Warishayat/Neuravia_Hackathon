@@ -492,9 +492,9 @@ else:
                 return av.VideoFrame.from_ndarray(processed_img, format="bgr24")
 
         webrtc_streamer(
-            key="mood-reminder",
-            video_transformer_factory=VideoTransformer,
-            media_stream_constraints={"video": True, "audio": False},
-            async_transform=True,
-        )
+        key="mood-reminder",
+        video_processor_factory=VideoTransformer,
+        media_stream_constraints={"video": True, "audio": False},
+        async_processing=True,
+    )
 
