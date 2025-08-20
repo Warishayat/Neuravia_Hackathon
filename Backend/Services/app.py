@@ -1,3 +1,4 @@
+
 import streamlit as st
 import sqlite3
 import bcrypt
@@ -24,7 +25,7 @@ from streamlit_webrtc import webrtc_streamer, VideoTransformerBase
 from tumor_detection import save_image_url,brain_tumor_classifier
 
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore", category=RuntimeWarning)
 load_dotenv()
 key = os.getenv("key")
 
@@ -496,5 +497,6 @@ else:
         video_processor_factory=VideoTransformer,
         media_stream_constraints={"video": True, "audio": False},
         async_processing=True,
+        rtc_configuration={"iceServers": []}
     )
 
