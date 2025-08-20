@@ -14,7 +14,7 @@ import cv2
 import av
 sys.path.append(os.path.abspath(".."))
 from PIL import Image
-from ..Services.Mediguide import encode_image,Pharmacist_specialist
+from Backend.Services.Mediguide import encode_image,Pharmacist_specialist
 from ..Services.Health_Assistant import health_assistant
 from ..Services.Health_Risk import healthRiskPrediction
 from ..Services.Medical_Reports import rag_pipeline, query_medical_report,save_temp_file,cleanup_temp_file
