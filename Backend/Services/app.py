@@ -23,11 +23,12 @@ from emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
 from tumor_detection import save_image_url,brain_tumor_classifier
 
-warnings.filterwarnings('error', category=DeprecationWarning)
+
+warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
-@st.cache_resource
+@st.cache_data
 def init_db():
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
@@ -492,8 +493,8 @@ else:
 
         webrtc_streamer(
             key="mood-reminder",
-            video_processor_factory=VideoTransformer,
+            video_transformer_factory=VideoTransformer,
             media_stream_constraints={"video": True, "audio": False},
-            async_processing=True,
+            async_transform=True,
         )
 
