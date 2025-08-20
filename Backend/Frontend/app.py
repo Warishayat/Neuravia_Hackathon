@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 from streamlit_cookies_manager import EncryptedCookieManager
 import cv2
 import av
+import sys
 sys.path.append(os.path.abspath(".."))
 from PIL import Image
 from Backend.Services.Mediguide import encode_image,Pharmacist_specialist
@@ -23,6 +24,7 @@ from ..Services.emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
 from ..Services.tumor_detection import save_image_url,brain_tumor_classifier
 
+sys.path.append(os.path.abspath(".."))
 
 warnings.filterwarnings('ignore')
 load_dotenv()
