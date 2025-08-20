@@ -12,19 +12,17 @@ from dotenv import load_dotenv
 from streamlit_cookies_manager import EncryptedCookieManager
 import cv2
 import av
-import sys
 sys.path.append(os.path.abspath(".."))
 from PIL import Image
-from Backend.Services.Mediguide import encode_image,Pharmacist_specialist
-from ..Services.Health_Assistant import health_assistant
-from ..Services.Health_Risk import healthRiskPrediction
-from ..Services.Medical_Reports import rag_pipeline, query_medical_report,save_temp_file,cleanup_temp_file
-from ..Services.Personalize_treatment import personalizedTreatmentPlan
-from ..Services.emotion_detection import process_frame
+from Mediguide import encode_image,Pharmacist_specialist
+from Health_Assistant import health_assistant
+from Health_Risk import healthRiskPrediction
+from Medical_Reports import rag_pipeline, query_medical_report,save_temp_file,cleanup_temp_file
+from Personalize_treatment import personalizedTreatmentPlan
+from emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
-from ..Services.tumor_detection import save_image_url,brain_tumor_classifier
+from tumor_detection import save_image_url,brain_tumor_classifier
 
-sys.path.append(os.path.abspath(".."))
 
 warnings.filterwarnings('ignore')
 load_dotenv()
@@ -158,7 +156,7 @@ else:
                 <div class='description'>
                     <p>NeuraCareAI is your all-in-one intelligent health assistant, combining cutting-edge AI with practical medical tools. Our platform offers:</p>
                     <ul>
-                        <li>🧠 <strong>AI-powered analysis of brain MRI scans to identify potential tumors including glioma, meningioma, and pituitary types with high-confidence results. Provides instant screening and detailed session logging for educational purposes.</li>
+                        <li>🧠 <strong>Brain-MRI-Scan:</strong>AI-powered analysis of brain MRI scans to identify potential tumors including glioma, meningioma, and pituitary types with high-confidence results. Provides instant screening and detailed session logging for educational purposes..</li>
                         <li>💊 <strong>MediGuide:</strong> AI-powered pharmacist assistant to identify medicines, provide usage instructions, dosage guidance, side effects, and warnings.</li>
                         <li>📄 <strong>MedicalReport:</strong> Personalized treatment plans and comprehensive health reports based on medical history and lifestyle factors.</li>
                         <li>😊 <strong>Real-time Mood Detection:</strong> Monitor your emotions with webcam-based detection and Sunnah-inspired mental wellness advice.</li>
