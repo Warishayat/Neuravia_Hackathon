@@ -1,1 +1,0 @@
-print("this file contain all the logic related tumor detection")

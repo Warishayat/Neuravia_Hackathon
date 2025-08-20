@@ -1,7 +1,12 @@
 import cv2
 from langchain_groq import ChatGroq
 from typing import Dict
+from dotenv import load_dotenv
+import os
 
+
+load_dotenv()
+groq_api_key = os.getenv("GROQ_API_KEY")
 llm = ChatGroq(model="moonshotai/kimi-k2-instruct", temperature=0.7)
 
 face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
@@ -77,3 +82,7 @@ def process_frame(frame):
         cv2.putText(frame, line, (20, yy), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
     return frame
+
+
+if __name__ == "__main__":
+    print("Everything is working up")
