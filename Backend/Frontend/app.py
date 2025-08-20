@@ -14,14 +14,14 @@ import cv2
 import av
 sys.path.append(os.path.abspath(".."))
 from PIL import Image
-from Services.Mediguide import encode_image,Pharmacist_specialist
-from Services.Health_Assistant import health_assistant
-from Services.Health_Risk import healthRiskPrediction
-from Services.Medical_Reports import rag_pipeline, query_medical_report,save_temp_file,cleanup_temp_file
-from Services.Personalize_treatment import personalizedTreatmentPlan
-from Services.emotion_detection import process_frame
+from ..Services.Mediguide import encode_image,Pharmacist_specialist
+from ..Services.Health_Assistant import health_assistant
+from ..Services.Health_Risk import healthRiskPrediction
+from ..Services.Medical_Reports import rag_pipeline, query_medical_report,save_temp_file,cleanup_temp_file
+from ..Services.Personalize_treatment import personalizedTreatmentPlan
+from ..Services.emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
-from Services.tumor_detection import save_image_url,brain_tumor_classifier
+from ..Services.tumor_detection import save_image_url,brain_tumor_classifier
 
 
 warnings.filterwarnings('ignore')
