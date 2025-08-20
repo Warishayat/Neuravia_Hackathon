@@ -4,10 +4,13 @@ import bcrypt
 import warnings
 import tempfile
 import sys, os
+import pandas as pd
+import json
+import time
+from datetime import datetime
 from dotenv import load_dotenv
 from streamlit_cookies_manager import EncryptedCookieManager
 import cv2
-import time
 import av
 sys.path.append(os.path.abspath(".."))
 from PIL import Image
@@ -18,10 +21,14 @@ from Services.Medical_Reports import rag_pipeline, query_medical_report,save_tem
 from Services.Personalize_treatment import personalizedTreatmentPlan
 from Services.emotion_detection import process_frame
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase 
+from Services.tumor_detection import save_image_url,brain_tumor_classifier
+
+
 warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
+@st.cache_resource
 def init_db():
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
@@ -149,7 +156,7 @@ else:
                 <div class='description'>
                     <p>NeuraCareAI is your all-in-one intelligent health assistant, combining cutting-edge AI with practical medical tools. Our platform offers:</p>
                     <ul>
-                        <li>🧠 <strong>Brain Tumor Detection:</strong> Custom-trained deep learning models for accurate MRI and CT scan analysis.</li>
+                        <li>🧠 <strong>AI-powered analysis of brain MRI scans to identify potential tumors including glioma, meningioma, and pituitary types with high-confidence results. Provides instant screening and detailed session logging for educational purposes.</li>
                         <li>💊 <strong>MediGuide:</strong> AI-powered pharmacist assistant to identify medicines, provide usage instructions, dosage guidance, side effects, and warnings.</li>
                         <li>📄 <strong>MedicalReport:</strong> Personalized treatment plans and comprehensive health reports based on medical history and lifestyle factors.</li>
                         <li>😊 <strong>Real-time Mood Detection:</strong> Monitor your emotions with webcam-based detection and Sunnah-inspired mental wellness advice.</li>
@@ -334,7 +341,147 @@ else:
             st.markdown(st.session_state.treatment_plan, unsafe_allow_html=True)
 
     with tab7:
-        st.header("Welcome to Tumor Detection")
+        st.header("Brain Tumor Detection")
+        if 'tumor_logs' not in st.session_state:
+            st.session_state.tumor_logs = []
+        uploaded_image = st.file_uploader(
+            "Upload Brain MRI Image",
+            type=['png', 'jpg', 'jpeg'],
+            help="Please upload only brain MRI images for accurate tumor detection"
+        )
+        if uploaded_image is not None:
+            st.image(uploaded_image, caption="Uploaded MRI Image", use_container_width=True)
+            
+            detect_button = st.button("Detect Tumor", type="primary", disabled=False)
+            
+            if detect_button:
+                with st.spinner("Analyzing MRI image for tumors..."):
+                    try:
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(uploaded_image.name)[1]) as tmp_file:
+                            tmp_file.write(uploaded_image.getvalue())
+                            temp_image_path = tmp_file.name
+                        
+                        try:
+                            with open(temp_image_path, "rb") as image_file:
+                                encoded_img = encode_image(image_path=temp_image_path)
+                            image_url = save_image_url(temp_image_path, encoded_img)
+                            result = brain_tumor_classifier(encoded_img)
+                            classification_response = result['response']
+                            if ':' in classification_response and '%' in classification_response:
+                                class_name, confidence_str = classification_response.split(':', 1)
+                                confidence = int(confidence_str.replace('%', ''))
+                            else:
+                                class_name = "error"
+                                confidence = 0
+                            class_descriptions = {
+                                "glioma": "Glioma Tumor detected in brain tissue",
+                                "meningioma": "Meningioma Tumor detected in meninges", 
+                                "pituitary": "Pituitary Tumor detected in pituitary gland",
+                                "notumor": "No tumor detected - normal brain MRI",
+                                "invalid": "Invalid image - not a brain MRI",
+                                "error": "Processing error - failed to analyze image"
+                            }
+                            description = class_descriptions.get(class_name.lower(), "Unknown classification")
+
+                            log_entry = {
+                                'timestamp': datetime.now().isoformat(),
+                                'image_name': uploaded_image.name,
+                                'image_url': image_url,
+                                'classification': class_name.upper(),
+                                'confidence': f"{confidence}%",
+                                'description': description,
+                                'is_valid_mri': result['is_valid_mri'],
+                                'status': 'Valid' if result['is_valid_mri'] else 'Invalid'
+                            }
+                            st.session_state.tumor_logs.append(log_entry)
+
+                            st.success("Analysis completed!")
+
+                            st.subheader("Detection Results")
+                            
+                            col1, col2, col3 = st.columns(3)
+                            with col1:
+                                st.metric("Classification", class_name.upper())
+                            with col2:
+                                st.metric("Confidence", f"{confidence}%")
+                            with col3:
+                                status_color = "✅" if result['is_valid_mri'] else "❌"
+                                st.metric("Status", f"{status_color} {'Valid' if result['is_valid_mri'] else 'Invalid'}")
+                            
+                            # Show description
+                            if class_name != 'invalid' and class_name != 'error':
+                                if class_name == 'notumor':
+                                    st.success(f"**Result:** {description}")
+                                else:
+                                    st.warning(f"**Result:** {description}")
+                            else:
+                                st.error(f"**Result:** {description}")
+                            st.info(f"**Message:** {result['message']}")
+                        finally:
+                            os.unlink(temp_image_path)
+                            
+                    except Exception as e:
+                        st.error(f"Error processing image: {str(e)}")
+
+        if st.session_state.tumor_logs:
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.tumor_logs)
+            display_df = log_df[['timestamp', 'image_name', 'classification', 'confidence', 'description', 'status', 'image_url']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Display the table
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "image_name": "Image Name",
+                    "classification": "Classification",
+                    "confidence": "Confidence",
+                    "description": "Description",
+                    "status": "Status",
+                    "image_url": st.column_config.LinkColumn("Image URL")
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            #Logs Download
+            if st.button("Download Session Logs"):
+                log_json = json.dumps(st.session_state.tumor_logs, indent=2)
+                st.download_button(
+                    label="Download JSON Logs",
+                    data=log_json,
+                    file_name=f"tumor_detection_logs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                    mime="application/json"
+                )
+            
+            #Clear logs
+            if st.button("Clear Logs"):
+                st.session_state.tumor_logs = []
+                st.rerun()
+        else:
+            st.info("No analysis logs yet. Upload an MRI image and click 'Detect Tumor' to get started.")
+        
+        #Instruction
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Brain Tumor Detection:**
+            
+            1. **Upload Image**: Select a brain MRI image file (PNG, JPG, JPEG)
+            2. **Click Detect**: Press the 'Detect Tumor' button to analyze the image
+            3. **View Results**: See the classification results above
+            4. **Check Logs**: All analyses are logged in the session table below
+            
+            **Expected Results:**
+            - **glioma**: Brain tissue tumor detection
+            - **meningioma**: Meninges tumor detection  
+            - **pituitary**: Pituitary gland tumor detection
+            - **notumor**: No tumors detected (normal MRI)
+            - **invalid**: Non-MRI image uploaded
+            
+            **Note**: This is an AI-assisted tool for educational purposes. 
+            Always consult medical professionals for actual diagnosis.
+            """)
     with tab8:
         st.header("Real-time Mood + Sunnah Reminder")
         
