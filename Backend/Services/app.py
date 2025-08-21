@@ -28,13 +28,14 @@ warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
-@st.cache_data
+st.cache_data
 def init_db():
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password TEXT)''')
     conn.commit()
     conn.close()
+@st.cache_data
 def add_user(email,password):
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
@@ -45,6 +46,7 @@ def add_user(email,password):
     except sqlite3.IntegrityError:
         st.warning("⚠️ Email already exists. Please login.")
     conn.close()
+@st.cache_data
 def get_user(email,password):
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
@@ -67,7 +69,7 @@ if cookies.get("logged_in")=="true":
     st.session_state.logged_in=True
     st.session_state.email=cookies.get("email")
 if not st.session_state.logged_in:
-    st.title("🔐 Welcome to NeuroAI")
+    st.title("🔐 Welcome to NeuroCare-AI")
     choice=st.radio("Login / Signup",["Login","Signup"])
     if choice=="Login":
         email=st.text_input("Email")
@@ -150,7 +152,7 @@ else:
         st.markdown(
             """
             <div class='hero-container'>
-                <h1>🏥 Welcome to NeuraCareAI</h1>
+                <h1>🏥 Welcome to NeuroCare-AI</h1>
                 <img src='https://media.nature.com/lw1024/magazine-assets/d42473-023-00106-8/d42473-023-00106-8_25389508.jpg' 
                     class='hero-image'>
                 <div class='description'>
@@ -167,7 +169,7 @@ else:
                     <p>Explore the tabs to access each feature and take control of your health with precision and care.</p>
                 </div>
                 <div class='footer'>
-                    © 2025 NeuraCareAI. All rights reserved. Built with custom AI models and advanced health technology.
+                    © 2025 NeuroCare-AI. All rights reserved. Built with custom AI models and advanced health technology.
                 </div>
             </div>
             """,
@@ -209,6 +211,7 @@ else:
                     st.markdown(f"**Assistant:** {chat['message']}")
 
     #Risk Prediction Logic
+    
     with tab3:
         if "risk_result" not in st.session_state:
             st.session_state["risk_result"] = ""
