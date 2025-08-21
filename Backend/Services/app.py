@@ -28,7 +28,7 @@ warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
-@st.cache_resource
+@st.cache_data
 def init_db():
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
@@ -598,7 +598,7 @@ else:
                 st.session_state.assistant_logs = []
                 st.rerun()
     
-    #Personalized treatment plan (now tab6)
+    # Personalized treatment plan (now tab6)
     with tab6:
         st.header("Welcome to Treatment Plan")
 
@@ -620,32 +620,44 @@ else:
             Always follow your doctor's recommended treatment plans.
             """)
 
-        age = st.number_input("Age", min_value=0, max_value=120, value=30, key="treatment_age")
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="treatment_gender")
-        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0, key="treatment_bmi")
-        diagnosis = st.text_area("Diagnosis (comma separated)", key="treatment_diagnosis").split(",")
-        allergies = st.text_area("Allergies (comma separated)", key="treatment_allergies").split(",")
-        lifestyle = st.selectbox("Lifestyle", ["Sedentary", "Average", "Active"], key="treatment_lifestyle")
-        sleep_schedule = st.number_input("Sleep hours per day", min_value=0, max_value=24, value=7, key="treatment_sleep")
-        exercise = st.text_input("Exercise habits", key="treatment_exercise")
-        diet_preferences = st.text_input("Diet Preferences", key="treatment_diet")
-        work_level = st.selectbox("Work Level", ["Desk job", "Moderate activity", "High activity"], key="treatment_work")
-        mental_state = st.selectbox("Mental State", ["Tired", "Normal", "Energetic", "Stressed"], key="treatment_mental")
-        duration = st.selectbox("Duration of plan", ["week", "2 weeks", "month"], key="treatment_duration")
+        # Create two columns for input parameters
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            age = st.number_input("Age", min_value=0, max_value=120, value=30, key="treatment_age")
+            gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="treatment_gender")
+            bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0, key="treatment_bmi")
+            diagnosis = st.text_area("Diagnosis (comma separated)", key="treatment_diagnosis")
+            allergies = st.text_area("Allergies (comma separated)", key="treatment_allergies")
+        
+        with col2:
+            lifestyle = st.selectbox("Lifestyle", ["Sedentary", "Average", "Active"], key="treatment_lifestyle")
+            sleep_schedule = st.number_input("Sleep hours per day", min_value=0, max_value=24, value=7, key="treatment_sleep")
+            exercise = st.text_input("Exercise habits", key="treatment_exercise")
+            diet_preferences = st.text_input("Diet Preferences", key="treatment_diet")
+            work_level = st.selectbox("Work Level", ["Desk job", "Moderate activity", "High activity"], key="treatment_work")
+            mental_state = st.selectbox("Mental State", ["Tired", "Normal", "Energetic", "Stressed"], key="treatment_mental")
+            duration = st.selectbox("Duration of plan", ["week", "2 weeks", "month"], key="treatment_duration")
 
-        if st.button("Generate Treatment Plan", key="treatment_generate"):
+        # Full width button
+        if st.button("Generate Treatment Plan", key="treatment_generate", use_container_width=True):
+            # Process comma-separated inputs
+            diagnosis_list = [d.strip() for d in diagnosis.split(",") if d.strip()]
+            allergies_list = [a.strip() for a in allergies.split(",") if a.strip()]
+            
             # Log the generation
             log_entry = {
                 'timestamp': datetime.now().isoformat(),
                 'action': 'Treatment Plan',
                 'age': age,
                 'gender': gender,
-                'diagnosis_count': len([d.strip() for d in diagnosis if d.strip()]),
+                'diagnosis_count': len(diagnosis_list),
                 'status': 'Processing'
             }
             st.session_state.treatment_logs.append(log_entry)
             
             st.session_state.treatment_plan = ""
+            st.markdown("---")  # Separator line
             response_container = st.empty()
             buffer = ""
 
@@ -653,8 +665,8 @@ else:
                 age=age,
                 gender=gender,
                 bmi=bmi,
-                diagnosis=[d.strip() for d in diagnosis if d.strip()],
-                allergies=[a.strip() for a in allergies if a.strip()],
+                diagnosis=diagnosis_list,
+                allergies=allergies_list,
                 lifestyle=lifestyle,
                 sleep_schedule=sleep_schedule,
                 exercise=exercise,
@@ -671,7 +683,7 @@ else:
             st.session_state.treatment_logs[-1]['status'] = 'Completed'
             st.session_state.treatment_logs[-1]['plan_length'] = len(buffer)
         
-        # Session Logs
+        # Session Logs (full width)
         if st.session_state.treatment_logs:
             st.markdown("---")
             st.subheader("Session Logs")
@@ -694,7 +706,7 @@ else:
                 hide_index=True
             )
             
-            if st.button("Clear Treatment Logs", key="clear_treatment_logs"):
+            if st.button("Clear Treatment Logs", key="clear_treatment_logs", use_container_width=True):
                 st.session_state.treatment_logs = []
                 st.rerun()
                 
@@ -704,7 +716,9 @@ else:
             st.session_state["risk_result"] = ""
         if "risk_logs" not in st.session_state:
             st.session_state.risk_logs = []
-        st.header("Welcome to Pre Risk Prediction")
+        
+        st.header("Welcome to Health Risk Prediction")
+        
         # Instructions expander
         with st.expander("ℹ️ Instructions"):
             st.markdown("""
@@ -718,18 +732,31 @@ else:
             Always consult healthcare professionals for accurate assessment.
             """)
         
-        age = st.number_input("Age", min_value=0, max_value=120, value=30)
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        smoking = st.checkbox("Smoking")
-        alcohol = st.checkbox("Alcohol consumption")
-        exercise_frequency = st.number_input("Exercise frequency (times/week)", min_value=0, max_value=14, value=3)
-        sleep_quality = st.slider("Sleep Quality (1-5)", min_value=1, max_value=5, value=4)
-        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0)
-        blood_pressure = st.text_input("Blood Pressure", value="120/80")
-        glucose_level = st.number_input("Glucose Level (mg/dL)", min_value=0, max_value=500, value=95)
-        medical_history = st.text_area("Medical History (comma separated)").split(",")
+        # Create two columns for better layout
+        col1, col2 = st.columns(2)
         
-        if st.button("Get Health Risk Assessment"):
+        with col1:
+            age = st.number_input("Age", min_value=0, max_value=120, value=30, help="Enter your age in years")
+            gender = st.selectbox("Gender", ["Male", "Female", "Other"], help="Select your gender")
+            smoking = st.checkbox("Smoking", help="Do you currently smoke?")
+            alcohol = st.checkbox("Alcohol consumption", help="Do you consume alcohol regularly?")
+            exercise_frequency = st.number_input("Exercise frequency (times/week)", min_value=0, max_value=14, value=3, help="How many times do you exercise per week?")
+        
+        with col2:
+            sleep_quality = st.slider("Sleep Quality (1-5)", min_value=1, max_value=5, value=4, help="1 = Poor, 5 = Excellent")
+            bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0, help="Body Mass Index (weight in kg / height in m²)")
+            blood_pressure = st.text_input("Blood Pressure", value="120/80", help="Format: systolic/diastolic (e.g., 120/80)")
+            glucose_level = st.number_input("Glucose Level (mg/dL)", min_value=0, max_value=500, value=95, help="Fasting blood glucose level")
+        
+        medical_history_input = st.text_area("Medical History (comma separated)", 
+                                    placeholder="e.g., Diabetes, Hypertension, Asthma",
+                                    help="List any existing medical conditions separated by commas")
+        
+        # Convert medical history input to list
+        medical_history = [m.strip() for m in medical_history_input.split(",")] if medical_history_input else []
+        
+        # Center the button - REMOVED COLUMNS LAYOUT
+        if st.button("Get Health Risk Assessment", type="primary", use_container_width=True):
             # Log the assessment
             log_entry = {
                 'timestamp': datetime.now().isoformat(),
@@ -740,8 +767,16 @@ else:
             }
             st.session_state.risk_logs.append(log_entry)
             
+            # Create a container for the streaming response - FULL WIDTH
+            st.markdown("---")  # Separator line
             response_container = st.empty()
+            with response_container:
+                st.markdown("**Generating your personalized health assessment...** ⏳")
+            
             buffer = ""
+            full_response = ""
+            
+            # Stream the response
             for chunk in healthRiskPrediction(
                 age,
                 gender,
@@ -752,42 +787,103 @@ else:
                 bmi,
                 blood_pressure,
                 glucose_level,
-                [m.strip() for m in medical_history if m.strip()]
+                medical_history
             ):
-                buffer += chunk 
+                buffer += chunk
+                full_response += chunk
                 response_container.markdown(buffer, unsafe_allow_html=True)
-            st.session_state.risk_result = buffer
+            
+            st.session_state.risk_result = full_response
             
             # Update log
             st.session_state.risk_logs[-1]['status'] = 'Completed'
-            st.session_state.risk_logs[-1]['result_length'] = len(buffer)
+            st.session_state.risk_logs[-1]['result_length'] = len(full_response)
+            st.session_state.risk_logs[-1]['bmi'] = bmi
+            st.session_state.risk_logs[-1]['blood_pressure'] = blood_pressure
         
-        # Session Logs
+        # Display previous result if exists - FULL WIDTH
+        if st.session_state.risk_result:
+            st.markdown("---")
+            st.subheader("Your Health Assessment")
+            st.markdown(st.session_state.risk_result, unsafe_allow_html=True)  # ← Full width display
+            
+            # Download button for the report
+            report_text = f"""
+    # NeuroCare-AI Health Risk Assessment Report
+    ## Generated on {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+    ### User Profile:
+    - Age: {age}
+    - Gender: {gender}
+    - BMI: {bmi}
+    - Blood Pressure: {blood_pressure}
+    - Glucose Level: {glucose_level} mg/dL
+
+    ### Assessment Results:
+    {st.session_state.risk_result}
+
+    ---
+    *This report is generated by NeuroCare-AI for informational purposes only.
+    Always consult with healthcare professionals for medical advice.*
+    """
+            
+            st.download_button(
+                label="📄 Download Report",
+                data=report_text,
+                file_name=f"health_assessment_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
+                mime="text/markdown",
+                use_container_width=True
+            )
+        
+        # Session Logs - FULL WIDTH
         if st.session_state.risk_logs:
             st.markdown("---")
-            st.subheader("Session Logs")
+            st.subheader("Assessment History")
+            
+            # Enhanced logs display
             log_df = pd.DataFrame(st.session_state.risk_logs)
-            display_df = log_df[['timestamp', 'action', 'age', 'gender', 'result_length', 'status']].copy()
+            
+            # Handle missing columns gracefully
+            available_columns = log_df.columns.tolist()
+            display_columns = ['timestamp', 'action', 'age', 'gender', 'status']
+            
+            if 'bmi' in available_columns:
+                display_columns.append('bmi')
+            if 'blood_pressure' in available_columns:
+                display_columns.append('blood_pressure')
+            if 'result_length' in available_columns:
+                display_columns.append('result_length')
+            
+            display_df = log_df[display_columns].copy()
             display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Create column configuration
+            column_config = {
+                "timestamp": "Timestamp",
+                "action": "Action", 
+                "age": "Age",
+                "gender": "Gender",
+                "status": "Status"
+            }
+            
+            if 'bmi' in display_columns:
+                column_config["bmi"] = st.column_config.NumberColumn("BMI", format="%.1f")
+            if 'blood_pressure' in display_columns:
+                column_config["blood_pressure"] = "BP"
+            if 'result_length' in display_columns:
+                column_config["result_length"] = st.column_config.NumberColumn("Length")
             
             st.dataframe(
                 display_df,
-                column_config={
-                    "timestamp": "Timestamp",
-                    "action": "Action",
-                    "age": "Age",
-                    "gender": "Gender",
-                    "result_length": "Result Length",
-                    "status": "Status"
-                },
+                column_config=column_config,
                 use_container_width=True,
                 hide_index=True
             )
             
-            if st.button("Clear Risk Logs", key="clear_risk_logs"):
+            if st.button("Clear Assessment History", key="clear_risk_logs", use_container_width=True):
                 st.session_state.risk_logs = []
+                st.session_state.risk_result = ""
                 st.rerun()
-
     # Emotion Detector (now tab7)
     with tab7:
         st.header("Real-time Mood + Sunnah Reminder")

@@ -92,15 +92,20 @@ def query_medical_report(vector_store, model, query: str):
     print("Quering the medical report")
     docs = vector_store.similarity_search(query)
     context = "\n".join([doc.page_content for doc in docs])
-    prompt = f"""Based on the following medical report context, please answer the question.
-    If you cannot find the answer in the context, say no answer found in the context.
-    Dont assist the the query if pdf is not realtead to healtcare or medicare or some sort of hospital document.   .
-    Context: {context}
-    Question: {query}
-    Answer:"""
+    prompt = f"""You are a medical assistant AI. Analyze the following context and provide a precise response to the question.
+    STRICT GUIDELINES:
+    1. ONLY respond if the context contains legitimate medical/healthcare content
+    2. If the context is not medical-related (healthcare, patient care, medical reports, clinical data, hospital documents), respond: "I can only assist with legitimate medical documents and reports."
+    3. If the question cannot be answered from the context, respond: "The requested information is not available in this medical document."
+    4. Base your response strictly on the provided context - do not extrapolate or add external knowledge
+    CONTEXT:
+    {context}
+    QUESTION:
+    {query}
+    MEDICAL VALIDATION: First confirm this is a legitimate medical document before responding.
+    RESPONSE:"""
     response = model.invoke(prompt)
     return response.content
-
 
 if __name__ == "__main__":
     filepath = r"C:\Users\HP\Desktop\Neuravia_hackathon\Neuravia_Hackathon\Backend\Pdfs\Neuravia_hackathon.pdf"
