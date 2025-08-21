@@ -28,13 +28,14 @@ warnings.filterwarnings('ignore')
 load_dotenv()
 key = os.getenv("key")
 
-st.cache_data
+@st.cache_resource
 def init_db():
     conn=sqlite3.connect("users.db")
     c=conn.cursor()
     c.execute('''CREATE TABLE IF NOT EXISTS users (email TEXT PRIMARY KEY, password TEXT)''')
     conn.commit()
     conn.close()
+
 @st.cache_data
 def add_user(email,password):
     conn=sqlite3.connect("users.db")
@@ -46,6 +47,7 @@ def add_user(email,password):
     except sqlite3.IntegrityError:
         st.warning("⚠️ Email already exists. Please login.")
     conn.close()
+
 @st.cache_data
 def get_user(email,password):
     conn=sqlite3.connect("users.db")
@@ -57,6 +59,7 @@ def get_user(email,password):
         stored_hashed=row[0]
         return bcrypt.checkpw(password.encode(),stored_hashed.encode("utf-8"))
     return False
+
 init_db()
 cookies=EncryptedCookieManager(prefix="neuroai_",password=key)
 if not cookies.ready():
@@ -102,7 +105,8 @@ else:
         cookies["logged_in"]="false"
         cookies.save()
         st.rerun()
-    tab1,tab8,tab2,tab3,tab4,tab5,tab6,tab7=st.tabs(["Home","Tumor Detection","Health Assistant","Risk Prediction","Medical Report","MediGuide","Treatment Plan","Emotion Detector"])
+    # Reordered tabs as requested: Tumor Detection first, then Medical Report, then MediGuide, then Health Assistant
+    tab1, tab8, tab4, tab5, tab2, tab6, tab3, tab7 = st.tabs(["Home", "Tumor Detection", "Medical Report", "MediGuide", "Health Assistant", "Treatment Plan", "Risk Prediction", "Emotion Detector"])
 
 
     with tab1:
@@ -156,7 +160,7 @@ else:
                 <img src='https://media.nature.com/lw1024/magazine-assets/d42473-023-00106-8/d42473-023-00106-8_25389508.jpg' 
                     class='hero-image'>
                 <div class='description'>
-                    <p>NeuraCareAI is your all-in-one intelligent health assistant, combining cutting-edge AI with practical medical tools. Our platform offers:</p>
+                    <p>NeuroCare-AI is your all-in-one intelligent health assistant, combining cutting-edge AI with practical medical tools. Our platform offers:</p>
                     <ul>
                         <li>🧠 <strong>Brain-MRI-Scan:</strong>AI-powered analysis of brain MRI scans to identify potential tumors including glioma, meningioma, and pituitary types with high-confidence results. Provides instant screening and detailed session logging for educational purposes..</li>
                         <li>💊 <strong>MediGuide:</strong> AI-powered pharmacist assistant to identify medicines, provide usage instructions, dosage guidance, side effects, and warnings.</li>
@@ -176,175 +180,29 @@ else:
             unsafe_allow_html=True
         )
 
-
-
-    # Health Assistant Chatbot logic
-    with tab2:
-        if "chat_history" not in st.session_state:
-            st.session_state["chat_history"] = []
-
-        st.subheader("Ask the Health Assistant")
-
-        with st.form(key="chat_form", clear_on_submit=True):
-            user_input = st.text_input("Enter your query:")
-            submit = st.form_submit_button("Send")
-
-            if submit and user_input:
-                st.session_state.chat_history.append({"role": "user", "message": user_input})
-
-                response_container = st.empty()
-                response_text = ""
-
-                for chunk in health_assistant(user_input):
-                    response_text += chunk
-                    response_container.markdown(f"**Assistant:** {response_text}")
-
-                st.session_state.chat_history.append({"role": "assistant", "message": response_text})
-
-        if st.session_state.chat_history:
-            st.markdown("---")
-            st.subheader("Chat History")
-            for chat in st.session_state.chat_history:
-                if chat["role"] == "user":
-                    st.markdown(f"**You:** {chat['message']}")
-                else:
-                    st.markdown(f"**Assistant:** {chat['message']}")
-
-    #Risk Prediction Logic
-    
-    with tab3:
-        if "risk_result" not in st.session_state:
-            st.session_state["risk_result"] = ""
-        age = st.number_input("Age", min_value=0, max_value=120, value=30)
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
-        smoking = st.checkbox("Smoking")
-        alcohol = st.checkbox("Alcohol consumption")
-        exercise_frequency = st.number_input("Exercise frequency (times/week)", min_value=0, max_value=14, value=3)
-        sleep_quality = st.slider("Sleep Quality (1-5)", min_value=1, max_value=5, value=4)
-        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0)
-        blood_pressure = st.text_input("Blood Pressure", value="120/80")
-        glucose_level = st.number_input("Glucose Level (mg/dL)", min_value=0, max_value=500, value=95)
-        medical_history = st.text_area("Medical History (comma separated)").split(",")
-        if st.button("Get Health Risk Assessment"):
-            response_container = st.empty()
-            buffer = ""
-            for chunk in healthRiskPrediction(
-                age,
-                gender,
-                smoking,
-                alcohol,
-                exercise_frequency,
-                sleep_quality,
-                bmi,
-                blood_pressure,
-                glucose_level,
-                [m.strip() for m in medical_history if m.strip()]
-            ):
-                buffer += chunk 
-                response_container.markdown(buffer, unsafe_allow_html=True)
-            st.session_state.risk_result = buffer
-        if st.session_state.risk_result:
-            st.markdown("---")
-            st.subheader("Last Health Risk Assessment")
-            st.markdown(st.session_state.risk_result, unsafe_allow_html=True)
-    
-    #Medical Report
-    with tab4:
-        st.header("Welcome to Medical Report")
-        uploaded_file = st.file_uploader("Upload your medical report (PDF)", type=["pdf"])
-
-        if "vector_store" not in st.session_state:
-            st.session_state.vector_store = None
-            st.session_state.model = None
-            st.session_state.pdf_uploaded = False
-
-        if uploaded_file:
-            if not st.session_state.pdf_uploaded:
-                temp_path = save_temp_file(uploaded_file)
-                vector_store, model = rag_pipeline(temp_path)
-                cleanup_temp_file(temp_path)
-                st.session_state.vector_store = vector_store
-                st.session_state.model = model
-                st.session_state.pdf_uploaded = True
-                st.success("PDF processed! You can now ask questions about it.")
-
-        if st.session_state.pdf_uploaded:
-            query = st.text_input("Ask a question about the PDF")
-            if st.button("Submit Question") and query.strip() != "":
-                response = query_medical_report(st.session_state.vector_store, st.session_state.model, query)
-                st.markdown(f"**You:** {query}")
-                st.markdown(f"**Bot:** {response}")
-        else:
-            st.info("Please upload a PDF first to ask questions.")
-            
-    with tab5:
-                st.header("Welcome to MediGuide")
-                uploaded_file=st.file_uploader("Upload a medical image or report",type=["jpg","jpeg","png"])
-                prompt=st.text_area("Enter your question or instruction")
-                if st.button("Submit"):
-                    if uploaded_file and prompt:
-                        suffix=os.path.splitext(uploaded_file.name)[1]
-                        os.makedirs("temp_mediguide",exist_ok=True)
-                        with tempfile.NamedTemporaryFile(delete=False,suffix=suffix,dir="temp_mediguide") as tmp_file:
-                            tmp_file.write(uploaded_file.getbuffer())
-                            tmp_file_path=tmp_file.name
-                        encoded=encode_image(image_path=tmp_file_path)
-                        response=Pharmacist_specialist(encode_img=encoded,query=prompt)
-                        st.subheader("MediGuide Response")
-                        st.write(response)
-                        st.image(uploaded_file,caption="Uploaded Image",use_container_width=True)
-                    else:
-                        st.warning("⚠️ Please upload a file and enter a prompt.")
-    #Personalized treatment plain
-    with tab6:
-        st.header("Welcome to Treatment Plan")
-
-        if "treatment_plan" not in st.session_state:
-            st.session_state.treatment_plan = ""
-
-        age = st.number_input("Age", min_value=0, max_value=120, value=30, key="treatment_age")
-        gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="treatment_gender")
-        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0, key="treatment_bmi")
-        diagnosis = st.text_area("Diagnosis (comma separated)", key="treatment_diagnosis").split(",")
-        allergies = st.text_area("Allergies (comma separated)", key="treatment_allergies").split(",")
-        lifestyle = st.selectbox("Lifestyle", ["Sedentary", "Average", "Active"], key="treatment_lifestyle")
-        sleep_schedule = st.number_input("Sleep hours per day", min_value=0, max_value=24, value=7, key="treatment_sleep")
-        exercise = st.text_input("Exercise habits", key="treatment_exercise")
-        diet_preferences = st.text_input("Diet Preferences", key="treatment_diet")
-        work_level = st.selectbox("Work Level", ["Desk job", "Moderate activity", "High activity"], key="treatment_work")
-        mental_state = st.selectbox("Mental State", ["Tired", "Normal", "Energetic", "Stressed"], key="treatment_mental")
-        duration = st.selectbox("Duration of plan", ["week", "2 weeks", "month"], key="treatment_duration")
-
-        if st.button("Generate Treatment Plan", key="treatment_generate"):
-            st.session_state.treatment_plan = ""
-            response_container = st.empty()
-            buffer = ""
-
-            for chunk in personalizedTreatmentPlan(
-                age=age,
-                gender=gender,
-                bmi=bmi,
-                diagnosis=[d.strip() for d in diagnosis if d.strip()],
-                allergies=[a.strip() for a in allergies if a.strip()],
-                lifestyle=lifestyle,
-                sleep_schedule=sleep_schedule,
-                exercise=exercise,
-                diet_preferences=diet_preferences,
-                work_level=work_level,
-                mental_state=mental_state,
-                duration=duration
-            ):
-                buffer += chunk
-                st.session_state.treatment_plan = buffer
-                response_container.markdown(buffer, unsafe_allow_html=True)
-
-        if st.session_state.treatment_plan:
-            st.markdown("---")
-            st.subheader("Last Personalized Treatment Plan")
-            st.markdown(st.session_state.treatment_plan, unsafe_allow_html=True)
-
+    # Tumor Detection tab (now tab8 is second after Home)
     with tab8:
         st.header("Brain Tumor Detection")
+        #Instruction
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Brain Tumor Detection:**
+            
+            1. **Upload Image**: Select a brain MRI image file (PNG, JPG, JPEG)
+            2. **Click Detect**: Press the 'Detect Tumor' button to analyze the image
+            3. **View Results**: See the classification results above
+            4. **Check Logs**: All analyses are logged in the session table below
+            
+            **Expected Results:**
+            - **glioma**: Brain tissue tumor detection
+            - **meningioma**: Meninges tumor detection  
+            - **pituitary**: Pituitary gland tumor detection
+            - **notumor**: No tumors detected (normal MRI)
+            - **invalid**: Non-MRI image uploaded
+            
+            **Note**: This is an AI-assisted tool for educational purposes. 
+            Always consult medical professionals for actual diagnosis.
+            """)
         if 'tumor_logs' not in st.session_state:
             st.session_state.tumor_logs = []
         uploaded_image = st.file_uploader(
@@ -465,33 +323,510 @@ else:
         else:
             st.info("No analysis logs yet. Upload an MRI image and click 'Detect Tumor' to get started.")
         
-        #Instruction
+
+    #Medical Report (now tab4)
+    with tab4:
+        st.header("Welcome to Medical Report")
+        
+        # Instructions expander
         with st.expander("ℹ️ Instructions"):
             st.markdown("""
-            **How to use Brain Tumor Detection:**
+            **How to use Medical Report Analyzer:**
             
-            1. **Upload Image**: Select a brain MRI image file (PNG, JPG, JPEG)
-            2. **Click Detect**: Press the 'Detect Tumor' button to analyze the image
-            3. **View Results**: See the classification results above
-            4. **Check Logs**: All analyses are logged in the session table below
+            1. **Upload PDF**: Upload your medical report in PDF format
+            2. **Wait for Processing**: The system will process and vectorize your document
+            3. **Ask Questions**: Type any question about your medical report
+            4. **Get Answers**: Receive AI-powered insights from your report
             
-            **Expected Results:**
-            - **glioma**: Brain tissue tumor detection
-            - **meningioma**: Meninges tumor detection  
-            - **pituitary**: Pituitary gland tumor detection
-            - **notumor**: No tumors detected (normal MRI)
-            - **invalid**: Non-MRI image uploaded
-            
-            **Note**: This is an AI-assisted tool for educational purposes. 
-            Always consult medical professionals for actual diagnosis.
+            **Note**: Your data remains private and is processed locally.
+            All medical information should be verified with healthcare professionals.
             """)
+        
+        uploaded_file = st.file_uploader("Upload your medical report (PDF)", type=["pdf"])
+
+        if "vector_store" not in st.session_state:
+            st.session_state.vector_store = None
+            st.session_state.model = None
+            st.session_state.pdf_uploaded = False
+        if "medical_logs" not in st.session_state:
+            st.session_state.medical_logs = []
+
+        if uploaded_file:
+            if not st.session_state.pdf_uploaded:
+                with st.spinner("Processing PDF and creating vectors..."):
+                    temp_path = save_temp_file(uploaded_file)
+                    vector_store, model = rag_pipeline(temp_path)
+                    cleanup_temp_file(temp_path)
+                    st.session_state.vector_store = vector_store
+                    st.session_state.model = model
+                    st.session_state.pdf_uploaded = True
+                    
+                    # Log the upload
+                    log_entry = {
+                        'timestamp': datetime.now().isoformat(),
+                        'action': 'PDF Uploaded',
+                        'file_name': uploaded_file.name,
+                        'file_size': f"{uploaded_file.size / 1024:.1f} KB",
+                        'status': 'Processed Successfully'
+                    }
+                    st.session_state.medical_logs.append(log_entry)
+                    
+                st.success("PDF processed! You can now ask questions about it.")
+
+        if st.session_state.pdf_uploaded:
+            query = st.text_input("Ask a question about the PDF")
+            if st.button("Submit Question") and query.strip() != "":
+                with st.spinner("Searching for answers..."):
+                    response = query_medical_report(st.session_state.vector_store, st.session_state.model, query)
+                
+                # Log the query
+                log_entry = {
+                    'timestamp': datetime.now().isoformat(),
+                    'action': 'Query Asked',
+                    'question': query,
+                    'response_length': len(response),
+                    'status': 'Answered'
+                }
+                st.session_state.medical_logs.append(log_entry)
+                
+                st.markdown(f"**You:** {query}")
+                st.markdown(f"**Bot:** {response}")
+
+            # Session Logs
+            if st.session_state.medical_logs:
+                st.markdown("---")
+                st.subheader("Session Logs")
+                log_df = pd.DataFrame(st.session_state.medical_logs)
+                
+                # Handle missing columns gracefully
+                available_columns = log_df.columns.tolist()
+                display_columns = ['timestamp', 'action', 'file_name']
+                
+                # Only include columns that exist in the DataFrame
+                if 'question' in available_columns:
+                    display_columns.append('question')
+                if 'response_length' in available_columns:
+                    display_columns.append('response_length')
+                if 'status' in available_columns:
+                    display_columns.append('status')
+                
+                display_df = log_df[display_columns].copy()
+                display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+                
+                # Create column configuration dynamically
+                column_config = {
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "file_name": "File Name"
+                }
+                
+                if 'question' in display_columns:
+                    column_config["question"] = "Question"
+                if 'response_length' in display_columns:
+                    column_config["response_length"] = "Response Length"
+                if 'status' in display_columns:
+                    column_config["status"] = "Status"
+                
+                st.dataframe(
+                    display_df,
+                    column_config=column_config,
+                    use_container_width=True,
+                    hide_index=True
+                )
+                
+                if st.button("Clear Medical Logs", key="clear_medical_logs"):
+                    st.session_state.medical_logs = []
+                    st.rerun()
+                    
+        else:
+            st.info("Please upload a PDF first to ask questions.")
+            
+    # MediGuide (now tab5)
+    with tab5:
+        st.header("Welcome to MediGuide")
+        
+        # Instructions expander
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use MediGuide:**
+            
+            1. **Upload Image**: Upload a medical image or report
+            2. **Enter Question**: Type your question about the medication
+            3. **Get Analysis**: Receive detailed information about the medicine
+            
+            **Supported formats**: JPG, JPEG, PNG
+            **Note**: Always verify medication information with a pharmacist.
+            """)
+        
+        if "mediguide_logs" not in st.session_state:
+            st.session_state.mediguide_logs = []
+        
+        uploaded_file = st.file_uploader("Upload a medical image or report", type=["jpg","jpeg","png"])
+        prompt = st.text_area("Enter your question or instruction")
+        
+        if st.button("Submit"):
+            if uploaded_file and prompt:
+                # Log the action
+                log_entry = {
+                    'timestamp': datetime.now().isoformat(),
+                    'action': 'Image Analysis',
+                    'file_name': uploaded_file.name,
+                    'question': prompt[:50] + "..." if len(prompt) > 50 else prompt,
+                    'status': 'Processing'
+                }
+                st.session_state.mediguide_logs.append(log_entry)
+                
+                suffix = os.path.splitext(uploaded_file.name)[1]
+                os.makedirs("temp_mediguide", exist_ok=True)
+                with tempfile.NamedTemporaryFile(delete=False, suffix=suffix, dir="temp_mediguide") as tmp_file:
+                    tmp_file.write(uploaded_file.getbuffer())
+                    tmp_file_path = tmp_file.name
+                
+                with st.spinner("Analyzing medical image..."):
+                    encoded = encode_image(image_path=tmp_file_path)
+                    response = Pharmacist_specialist(encode_img=encoded, query=prompt)
+                
+                # Update log
+                st.session_state.mediguide_logs[-1]['status'] = 'Completed'
+                st.session_state.mediguide_logs[-1]['response_length'] = len(response)
+                
+                st.subheader("MediGuide Response")
+                st.write(response)
+                st.image(uploaded_file, caption="Uploaded Image", use_container_width=True)
+            else:
+                st.warning("⚠️ Please upload a file and enter a prompt.")
+        
+        # Session Logs
+        if st.session_state.mediguide_logs:
+            st.markdown("---")
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.mediguide_logs)
+            display_df = log_df[['timestamp', 'action', 'file_name', 'question', 'response_length', 'status']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "file_name": "File Name",
+                    "question": "Question",
+                    "response_length": "Response Length",
+                    "status": "Status"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if st.button("Clear MediGuide Logs", key="clear_mediguide_logs"):
+                st.session_state.mediguide_logs = []
+                st.rerun()
+
+    # Health Assistant Chatbot logic (now tab2)
+    with tab2:
+        if "chat_history" not in st.session_state:
+            st.session_state["chat_history"] = []
+        if "assistant_logs" not in st.session_state:
+            st.session_state.assistant_logs = []
+        
+        # Instructions expander
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Health Assistant:**
+            
+            1. **Ask Questions**: Type any health-related question
+            2. **Get Responses**: Receive AI-powered health guidance
+            3. **View History**: All conversations are saved in session
+            
+            **Note**: This is for informational purposes only.
+            Always consult healthcare professionals for medical advice.
+            """)
+
+        st.subheader("Ask the Health Assistant")
+
+        with st.form(key="chat_form", clear_on_submit=True):
+            user_input = st.text_input("Enter your query:")
+            submit = st.form_submit_button("Send")
+
+            if submit and user_input:
+                # Log the query
+                log_entry = {
+                    'timestamp': datetime.now().isoformat(),
+                    'action': 'Chat Query',
+                    'question': user_input[:50] + "..." if len(user_input) > 50 else user_input,
+                    'status': 'Processing'
+                }
+                st.session_state.assistant_logs.append(log_entry)
+                
+                st.session_state.chat_history.append({"role": "user", "message": user_input})
+
+                response_container = st.empty()
+                response_text = ""
+
+                for chunk in health_assistant(user_input):
+                    response_text += chunk
+                    response_container.markdown(f"**Assistant:** {response_text}")
+
+                st.session_state.chat_history.append({"role": "assistant", "message": response_text})
+                
+                # Update log
+                st.session_state.assistant_logs[-1]['status'] = 'Completed'
+                st.session_state.assistant_logs[-1]['response_length'] = len(response_text)
+        
+        # Session Logs
+        if st.session_state.assistant_logs:
+            st.markdown("---")
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.assistant_logs)
+            display_df = log_df[['timestamp', 'action', 'question', 'response_length', 'status']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "question": "Question",
+                    "response_length": "Response Length",
+                    "status": "Status"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if st.button("Clear Assistant Logs", key="clear_assistant_logs"):
+                st.session_state.assistant_logs = []
+                st.rerun()
+    
+    #Personalized treatment plan (now tab6)
+    with tab6:
+        st.header("Welcome to Treatment Plan")
+
+        if "treatment_plan" not in st.session_state:
+            st.session_state.treatment_plan = ""
+        if "treatment_logs" not in st.session_state:
+            st.session_state.treatment_logs = []
+        
+        # Instructions expander
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Treatment Plan Generator:**
+            
+            1. **Enter Details**: Provide your health information
+            2. **Generate Plan**: Create personalized treatment plan
+            3. **Follow Guidance**: Review and implement recommendations
+            
+            **Note**: This is a guidance tool, not medical prescription.
+            Always follow your doctor's recommended treatment plans.
+            """)
+
+        age = st.number_input("Age", min_value=0, max_value=120, value=30, key="treatment_age")
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"], key="treatment_gender")
+        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0, key="treatment_bmi")
+        diagnosis = st.text_area("Diagnosis (comma separated)", key="treatment_diagnosis").split(",")
+        allergies = st.text_area("Allergies (comma separated)", key="treatment_allergies").split(",")
+        lifestyle = st.selectbox("Lifestyle", ["Sedentary", "Average", "Active"], key="treatment_lifestyle")
+        sleep_schedule = st.number_input("Sleep hours per day", min_value=0, max_value=24, value=7, key="treatment_sleep")
+        exercise = st.text_input("Exercise habits", key="treatment_exercise")
+        diet_preferences = st.text_input("Diet Preferences", key="treatment_diet")
+        work_level = st.selectbox("Work Level", ["Desk job", "Moderate activity", "High activity"], key="treatment_work")
+        mental_state = st.selectbox("Mental State", ["Tired", "Normal", "Energetic", "Stressed"], key="treatment_mental")
+        duration = st.selectbox("Duration of plan", ["week", "2 weeks", "month"], key="treatment_duration")
+
+        if st.button("Generate Treatment Plan", key="treatment_generate"):
+            # Log the generation
+            log_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'action': 'Treatment Plan',
+                'age': age,
+                'gender': gender,
+                'diagnosis_count': len([d.strip() for d in diagnosis if d.strip()]),
+                'status': 'Processing'
+            }
+            st.session_state.treatment_logs.append(log_entry)
+            
+            st.session_state.treatment_plan = ""
+            response_container = st.empty()
+            buffer = ""
+
+            for chunk in personalizedTreatmentPlan(
+                age=age,
+                gender=gender,
+                bmi=bmi,
+                diagnosis=[d.strip() for d in diagnosis if d.strip()],
+                allergies=[a.strip() for a in allergies if a.strip()],
+                lifestyle=lifestyle,
+                sleep_schedule=sleep_schedule,
+                exercise=exercise,
+                diet_preferences=diet_preferences,
+                work_level=work_level,
+                mental_state=mental_state,
+                duration=duration
+            ):
+                buffer += chunk
+                st.session_state.treatment_plan = buffer
+                response_container.markdown(buffer, unsafe_allow_html=True)
+            
+            # Update log
+            st.session_state.treatment_logs[-1]['status'] = 'Completed'
+            st.session_state.treatment_logs[-1]['plan_length'] = len(buffer)
+        
+        # Session Logs
+        if st.session_state.treatment_logs:
+            st.markdown("---")
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.treatment_logs)
+            display_df = log_df[['timestamp', 'action', 'age', 'gender', 'diagnosis_count', 'plan_length', 'status']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "age": "Age",
+                    "gender": "Gender",
+                    "diagnosis_count": "Diagnoses",
+                    "plan_length": "Plan Length",
+                    "status": "Status"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if st.button("Clear Treatment Logs", key="clear_treatment_logs"):
+                st.session_state.treatment_logs = []
+                st.rerun()
+                
+    #Risk Prediction Logic (now tab3)
+    with tab3:
+        if "risk_result" not in st.session_state:
+            st.session_state["risk_result"] = ""
+        if "risk_logs" not in st.session_state:
+            st.session_state.risk_logs = []
+        st.header("Welcome to Pre Risk Prediction")
+        # Instructions expander
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Health Risk Prediction:**
+            
+            1. **Enter Information**: Fill in your health details
+            2. **Get Assessment**: Receive personalized risk analysis
+            3. **Review Results**: Understand your health risks
+            
+            **Note**: This is a predictive tool, not a medical diagnosis.
+            Always consult healthcare professionals for accurate assessment.
+            """)
+        
+        age = st.number_input("Age", min_value=0, max_value=120, value=30)
+        gender = st.selectbox("Gender", ["Male", "Female", "Other"])
+        smoking = st.checkbox("Smoking")
+        alcohol = st.checkbox("Alcohol consumption")
+        exercise_frequency = st.number_input("Exercise frequency (times/week)", min_value=0, max_value=14, value=3)
+        sleep_quality = st.slider("Sleep Quality (1-5)", min_value=1, max_value=5, value=4)
+        bmi = st.number_input("BMI", min_value=10.0, max_value=50.0, value=23.0)
+        blood_pressure = st.text_input("Blood Pressure", value="120/80")
+        glucose_level = st.number_input("Glucose Level (mg/dL)", min_value=0, max_value=500, value=95)
+        medical_history = st.text_area("Medical History (comma separated)").split(",")
+        
+        if st.button("Get Health Risk Assessment"):
+            # Log the assessment
+            log_entry = {
+                'timestamp': datetime.now().isoformat(),
+                'action': 'Risk Assessment',
+                'age': age,
+                'gender': gender,
+                'status': 'Processing'
+            }
+            st.session_state.risk_logs.append(log_entry)
+            
+            response_container = st.empty()
+            buffer = ""
+            for chunk in healthRiskPrediction(
+                age,
+                gender,
+                smoking,
+                alcohol,
+                exercise_frequency,
+                sleep_quality,
+                bmi,
+                blood_pressure,
+                glucose_level,
+                [m.strip() for m in medical_history if m.strip()]
+            ):
+                buffer += chunk 
+                response_container.markdown(buffer, unsafe_allow_html=True)
+            st.session_state.risk_result = buffer
+            
+            # Update log
+            st.session_state.risk_logs[-1]['status'] = 'Completed'
+            st.session_state.risk_logs[-1]['result_length'] = len(buffer)
+        
+        # Session Logs
+        if st.session_state.risk_logs:
+            st.markdown("---")
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.risk_logs)
+            display_df = log_df[['timestamp', 'action', 'age', 'gender', 'result_length', 'status']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "age": "Age",
+                    "gender": "Gender",
+                    "result_length": "Result Length",
+                    "status": "Status"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if st.button("Clear Risk Logs", key="clear_risk_logs"):
+                st.session_state.risk_logs = []
+                st.rerun()
+
+    # Emotion Detector (now tab7)
     with tab7:
         st.header("Real-time Mood + Sunnah Reminder")
+        
+        if "emotion_logs" not in st.session_state:
+            st.session_state.emotion_logs = []
+        
+        # Instructions expander
+        with st.expander("ℹ️ Instructions"):
+            st.markdown("""
+            **How to use Emotion Detector:**
+            
+            1. **Enable Camera**: Allow camera access when prompted
+            2. **Show Face**: Position your face in the camera view
+            3. **Get Analysis**: Real-time emotion detection with wellness advice
+            
+            **Privacy**: Video processing happens locally in your browser.
+            No images are stored or sent to servers.
+            """)
+        
+        # Log when emotion detection starts
+        if "emotion_started" not in st.session_state:
+            st.session_state.emotion_started = False
         
         class VideoTransformer(VideoTransformerBase):
             def recv(self, frame):
                 img = frame.to_ndarray(format="bgr24")
                 processed_img = process_frame(img)
+                
+                # Log emotion detection activity
+                if not st.session_state.emotion_started:
+                    log_entry = {
+                        'timestamp': datetime.now().isoformat(),
+                        'action': 'Emotion Detection',
+                        'status': 'Active'
+                    }
+                    st.session_state.emotion_logs.append(log_entry)
+                    st.session_state.emotion_started = True
+                
                 return av.VideoFrame.from_ndarray(processed_img, format="bgr24")
 
         webrtc_streamer(
@@ -500,4 +835,27 @@ else:
             media_stream_constraints={"video": True, "audio": False},
             async_transform=True,
         )
-
+        
+        # Session Logs
+        if st.session_state.emotion_logs:
+            st.markdown("---")
+            st.subheader("Session Logs")
+            log_df = pd.DataFrame(st.session_state.emotion_logs)
+            display_df = log_df[['timestamp', 'action', 'status']].copy()
+            display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            st.dataframe(
+                display_df,
+                column_config={
+                    "timestamp": "Timestamp",
+                    "action": "Action",
+                    "status": "Status"
+                },
+                use_container_width=True,
+                hide_index=True
+            )
+            
+            if st.button("Clear Emotion Logs", key="clear_emotion_logs"):
+                st.session_state.emotion_logs = []
+                st.session_state.emotion_started = False
+                st.rerun()
