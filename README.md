@@ -213,7 +213,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 For support, questions, or feedback:
-- 📧 Email: support@neurocare-ai.com
+- 📧 Email: warishayat666@gmail.com
 - 🐛 [Issue Tracker](https://github.com/yourusername/neurocare-ai/issues)
 - 💬 [Discussions](https://github.com/yourusername/neurocare-ai/discussions)
 
