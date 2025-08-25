@@ -887,33 +887,33 @@ else:
     # Emotion Detector (now tab7)
     with tab7:
         st.header("Real-time Mood + Sunnah Reminder")
-        
+    
+        # Initialize session state
         if "emotion_logs" not in st.session_state:
             st.session_state.emotion_logs = []
-        
-        # Instructions expander
+        if "emotion_started" not in st.session_state:
+            st.session_state.emotion_started = False
+    
+        # Instructions section
         with st.expander("ℹ️ Instructions"):
             st.markdown("""
             **How to use Emotion Detector:**
             
-            1. **Enable Camera**: Allow camera access when prompted
-            2. **Show Face**: Position your face in the camera view
-            3. **Get Analysis**: Real-time emotion detection with wellness advice
+            1. **Enable Camera**: Allow camera access when prompted.
+            2. **Show Face**: Position your face in the camera view.
+            3. **Get Analysis**: Real-time emotion detection with wellness advice.
             
             **Privacy**: Video processing happens locally in your browser.
             No images are stored or sent to servers.
             """)
-        
-        # Log when emotion detection starts
-        if "emotion_started" not in st.session_state:
-            st.session_state.emotion_started = False
-        
+    
+        # Define Video Transformer (async for async_transform=True)
         class VideoTransformer(VideoTransformerBase):
-            def recv(self, frame):
+            async def recv(self, frame):
                 img = frame.to_ndarray(format="bgr24")
                 processed_img = process_frame(img)
-                
-                # Log emotion detection activity
+    
+                # Log the start of emotion detection
                 if not st.session_state.emotion_started:
                     log_entry = {
                         'timestamp': datetime.now().isoformat(),
@@ -922,24 +922,37 @@ else:
                     }
                     st.session_state.emotion_logs.append(log_entry)
                     st.session_state.emotion_started = True
-                
+    
                 return av.VideoFrame.from_ndarray(processed_img, format="bgr24")
-
-        webrtc_streamer(
-            key="mood-reminder",
-            video_processor_factory=VideoTransformer,
-            media_stream_constraints={"video": True, "audio": False},
-            async_transform=True,
-        )
-        
-        # Session Logs
+    
+        # Try to start WebRTC streaming with error handling
+        try:
+            ctx = webrtc_streamer(
+                key="mood-reminder",
+                video_processor_factory=VideoTransformer,
+                media_stream_constraints={"video": True, "audio": False},
+                async_transform=True,
+            )
+    
+            # Show connection state feedback
+            if ctx.state.playing:
+                st.success("✅ Camera is active. Emotion detection running...")
+            elif ctx.state.ended:
+                st.warning("⚠️ Camera disconnected.")
+                st.session_state.emotion_started = False
+    
+        except Exception as e:
+            st.error(f"❌ Failed to start camera stream: {e}")
+    
+        # Display session logs if any
         if st.session_state.emotion_logs:
             st.markdown("---")
             st.subheader("Session Logs")
+    
             log_df = pd.DataFrame(st.session_state.emotion_logs)
             display_df = log_df[['timestamp', 'action', 'status']].copy()
             display_df['timestamp'] = pd.to_datetime(display_df['timestamp']).dt.strftime('%Y-%m-%d %H:%M:%S')
-            
+    
             st.dataframe(
                 display_df,
                 column_config={
@@ -950,7 +963,8 @@ else:
                 use_container_width=True,
                 hide_index=True
             )
-            
+    
+            # Clear logs button
             if st.button("Clear Emotion Logs", key="clear_emotion_logs"):
                 st.session_state.emotion_logs = []
                 st.session_state.emotion_started = False
